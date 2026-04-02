@@ -1,0 +1,14 @@
+{
+  "name": "mounti",
+  "version": "1.0.0",
+  "description": "Mounti - Web-based stock screener powered by Yahoo Finance",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "yahoo-finance2": "^2.11.3"
+  }
+}

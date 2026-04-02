@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mounti — Stock Screener</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0d1117;
+      --surface:    #161b22;
+      --surface2:   #1e2530;
+      --border:     #30363d;
+      --accent:     #2ea043;
+      --accent-dim: #1a5c2a;
+      --accent2:    #388bfd;
+      --text:       #e6edf3;
+      --text-muted: #8b949e;
+      --text-dim:   #484f58;
+      --red:        #f85149;
+      --green:      #3fb950;
+      --yellow:     #d29922;
+      --radius:     8px;
+      --radius-sm:  5px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ── */
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -1px;
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-tagline {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    #last-updated { font-size: 11px; }
+
+    .btn-refresh {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-refresh:hover { border-color: var(--accent2); color: var(--text); }
+    .btn-refresh svg { transition: transform .4s; }
+    .btn-refresh.spinning svg { animation: spin .7s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Main content ── */
+    .main {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .filter-section h3 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .filter-control {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      appearance: none;
+      cursor: pointer;
+      transition: border-color .15s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b949e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+    .filter-control:hover, .filter-control:focus {
+      border-color: var(--accent2);
+      outline: none;
+    }
+
+    /* Market Cap Bands */
+    .cap-bands {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .cap-band-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      transition: all .15s;
+    }
+    .cap-band-label:hover { background: var(--surface2); border-color: var(--border); }
+    .cap-band-label input[type="radio"] { accent-color: var(--accent); }
+
+    .cap-band-name {
+      font-weight: 500;
+      font-size: 13px;
+    }
+    .cap-band-range {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .cap-band-label.selected {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+    }
+
+    /* Apply / Reset buttons */
+    .filter-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn {
+      padding: 9px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all .15s;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #3cbb50; }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
+
+    /* ── Results panel ── */
+    .results {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .results-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+    }
+
+    .results-count {
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .results-count span { color: var(--text-muted); font-weight: 400; }
+
+    .search-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px 6px 32px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      width: 220px;
+      transition: border-color .15s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 10px center;
+    }
+    .search-box:focus { border-color: var(--accent2); outline: none; }
+    .search-box::placeholder { color: var(--text-dim); }
+
+    /* ── Table ── */
+    .table-wrap {
+      overflow: auto;
+      flex: 1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--surface2);
+    }
+
+    th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      transition: color .15s;
+    }
+    th:hover { color: var(--text); }
+    th.sorted { color: var(--accent2); }
+    th .sort-arrow { display: inline-block; margin-left: 4px; opacity: .5; font-size: 10px; }
+    th.sorted .sort-arrow { opacity: 1; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+    tbody tr:hover { background: var(--surface2); }
+
+    td {
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    .td-ticker {
+      font-weight: 700;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      color: var(--accent2);
+    }
+
+    .td-name {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+    }
+
+    .td-country, .td-industry {
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .td-mcap {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .cap-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .cap-mega  { background: #1f3d5c; color: #79c0ff; }
+    .cap-large { background: #1a3a1f; color: #56d364; }
+    .cap-mid   { background: #2d2806; color: #e3b341; }
+    .cap-small { background: #2d1f00; color: #f0883e; }
+    .cap-micro { background: #2d1516; color: #ff7b72; }
+
+    .td-price {
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .td-change {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .positive { color: var(--green); }
+    .negative { color: var(--red); }
+    .neutral  { color: var(--text-muted); }
+
+    /* ── States ── */
+    .state-overlay {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 80px 20px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .state-overlay .icon {
+      font-size: 40px;
+      opacity: .4;
+    }
+
+    .state-overlay h2 { font-size: 16px; color: var(--text); }
+    .state-overlay p  { font-size: 13px; max-width: 320px; line-height: 1.6; }
+
+    /* Spinner */
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    /* Progress bar */
+    .progress-bar-wrap {
+      width: 200px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      transition: width .3s;
+    }
+
+    /* ── Tooltip ── */
+    [data-tip] { position: relative; }
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s;
+      z-index: 200;
+    }
+    [data-tip]:hover::after { opacity: 1; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr; }
+      aside {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 14px;
+      }
+      .filter-section { min-width: 160px; flex: 1; }
+      .filter-actions { flex-direction: row; margin-top: 0; padding-top: 0; border-top: none; }
+      .cap-bands { flex-direction: row; flex-wrap: wrap; }
+    }
+
+    @media (max-width: 600px) {
+      .search-box { width: 140px; }
+      .td-country, .td-industry { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header ── -->
+  <header>
+    <a class="logo" href="#">
+      <div class="logo-icon">M</div>
+      <div>
+        <div class="logo-text">Mounti</div>
+        <div class="logo-tagline">Stock Screener</div>
+      </div>
+    </a>
+    <div class="header-meta">
+      <span id="last-updated"></span>
+      <button class="btn-refresh" id="btn-refresh" title="Refresh data">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <!-- ── Sidebar Filters ── -->
+    <aside id="sidebar">
+
+      <div class="filter-section">
+        <h3>Country</h3>
+        <select class="filter-control" id="filter-country">
+          <option value="all">All Countries</option>
+        </select>
+      </div>
+
+      <div class="filter-section">
+        <h3>Industry</h3>
+        <select class="filter-control" id="filter-industry">
+          <option value="all">All Industries</option>
+        </select>
+      </div>
+
+      <div class="filter-section">
+        <h3>Market Cap</h3>
+        <div class="cap-bands" id="cap-bands">
+          <label class="cap-band-label selected" data-band="all">
+            <input type="radio" name="marketCap" value="all" checked />
+            <span class="cap-band-name">All</span>
+            <span class="cap-band-range"></span>
+          </label>
+          <label class="cap-band-label" data-band="Mega">
+            <input type="radio" name="marketCap" value="Mega" />
+            <span class="cap-band-name">Mega</span>
+            <span class="cap-band-range">&gt;$200B</span>
+          </label>
+          <label class="cap-band-label" data-band="Large">
+            <input type="radio" name="marketCap" value="Large" />
+            <span class="cap-band-name">Large</span>
+            <span class="cap-band-range">$10B–$200B</span>
+          </label>
+          <label class="cap-band-label" data-band="Mid">
+            <input type="radio" name="marketCap" value="Mid" />
+            <span class="cap-band-name">Mid</span>
+            <span class="cap-band-range">$2B–$10B</span>
+          </label>
+          <label class="cap-band-label" data-band="Small">
+            <input type="radio" name="marketCap" value="Small" />
+            <span class="cap-band-name">Small</span>
+            <span class="cap-band-range">$300M–$2B</span>
+          </label>
+          <label class="cap-band-label" data-band="Micro">
+            <input type="radio" name="marketCap" value="Micro" />
+            <span class="cap-band-name">Micro</span>
+            <span class="cap-band-range">&lt;$300M</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-primary" id="btn-apply">Apply Filters</button>
+        <button class="btn btn-secondary" id="btn-reset">Reset</button>
+      </div>
+
+    </aside>
+
+    <!-- ── Results ── -->
+    <section class="results">
+      <div class="results-header">
+        <div class="results-count" id="results-count">Loading...</div>
+        <input type="search" class="search-box" id="search" placeholder="Search ticker or name…" />
+      </div>
+
+      <div class="table-wrap" id="table-wrap">
+        <div class="state-overlay" id="state-loading">
+          <div class="spinner"></div>
+          <h2>Loading stocks…</h2>
+          <p>Fetching data from Yahoo Finance. This may take a moment on first load.</p>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── State ──────────────────────────────────────────────────────────
+  let allStocks = [];
+  let displayedStocks = [];
+  let filters = { country: 'all', industry: 'all', marketCapBand: 'all' };
+  let sort = { col: 'marketCap', dir: 'desc' };
+  let searchQuery = '';
+  let countryIndustryMap = {};
+  let lastUpdated = null;
+
+  // ── DOM refs ───────────────────────────────────────────────────────
+  const tableWrap      = document.getElementById('table-wrap');
+  const resultsCount   = document.getElementById('results-count');
+  const filterCountry  = document.getElementById('filter-country');
+  const filterIndustry = document.getElementById('filter-industry');
+  const capBands       = document.querySelectorAll('.cap-band-label');
+  const btnApply       = document.getElementById('btn-apply');
+  const btnReset       = document.getElementById('btn-reset');
+  const btnRefresh     = document.getElementById('btn-refresh');
+  const searchInput    = document.getElementById('search');
+  const lastUpdatedEl  = document.getElementById('last-updated');
+  const progressBar    = document.getElementById('progress-bar');
+
+  // ── Helpers ────────────────────────────────────────────────────────
+  function fmtChange(val) {
+    if (val == null) return '<span class="neutral">—</span>';
+    const cls = val > 0 ? 'positive' : val < 0 ? 'negative' : 'neutral';
+    const sign = val > 0 ? '+' : '';
+    return `<span class="${cls}">${sign}${val.toFixed(2)}%</span>`;
+  }
+
+  function fmtPrice(val, currency) {
+    if (val == null) return '—';
+    const sym = currency === 'USD' ? '$' : (currency || '');
+    return `${sym}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  function capBadge(band) {
+    if (!band || band === 'Unknown') return '';
+    const cls = `cap-${band.toLowerCase()}`;
+    return `<span class="cap-badge ${cls}">${band}</span>`;
+  }
+
+  function setUpdatedTime() {
+    lastUpdated = new Date();
+    lastUpdatedEl.textContent = `Updated ${lastUpdated.toLocaleTimeString()}`;
+  }
+
+  // ── Progress simulation ────────────────────────────────────────────
+  let progressInterval = null;
+  function startProgress() {
+    let pct = 0;
+    progressBar.style.width = '0%';
+    clearInterval(progressInterval);
+    progressInterval = setInterval(() => {
+      pct = Math.min(pct + Math.random() * 4, 85);
+      progressBar.style.width = pct + '%';
+    }, 300);
+  }
+  function finishProgress() {
+    clearInterval(progressInterval);
+    progressBar.style.width = '100%';
+    setTimeout(() => { progressBar.style.width = '0%'; }, 400);
+  }
+
+  // ── Fetch stocks ───────────────────────────────────────────────────
+  async function fetchStocks(forceRefresh = false) {
+    showLoading();
+    startProgress();
+
+    try {
+      if (forceRefresh) {
+        await fetch('/api/refresh', { method: 'POST' });
+      }
+
+      const params = new URLSearchParams();
+      if (filters.country !== 'all')      params.set('country', filters.country);
+      if (filters.industry !== 'all')     params.set('industry', filters.industry);
+      if (filters.marketCapBand !== 'all') params.set('marketCapBand', filters.marketCapBand);
+
+      const [stocksRes, filtersRes] = await Promise.all([
+        fetch('/api/stocks?' + params),
+        allStocks.length === 0 ? fetch('/api/filters') : Promise.resolve(null),
+      ]);
+
+      if (!stocksRes.ok) throw new Error(`Server error ${stocksRes.status}`);
+      const { stocks } = await stocksRes.json();
+
+      if (filtersRes) {
+        const filterData = await filtersRes.json();
+        countryIndustryMap = filterData.countryIndustryMap || {};
+        populateCountries(filterData.countries || []);
+        populateIndustries(filterData.industries || []);
+      }
+
+      allStocks = stocks;
+      finishProgress();
+      setUpdatedTime();
+      applyLocalFilters();
+    } catch (err) {
+      finishProgress();
+      showError(err.message);
+    }
+  }
+
+  // ── Filter dropdowns ───────────────────────────────────────────────
+  function populateCountries(countries) {
+    filterCountry.innerHTML = '<option value="all">All Countries</option>';
+    for (const c of countries) {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      filterCountry.appendChild(opt);
+    }
+    filterCountry.value = filters.country;
+  }
+
+  function populateIndustries(industries, fromCountryMap = false) {
+    filterIndustry.innerHTML = '<option value="all">All Industries</option>';
+    for (const i of industries) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = i;
+      filterIndustry.appendChild(opt);
+    }
+    filterIndustry.value = filters.industry in industries ? filters.industry : 'all';
+  }
+
+  // ── Local filter + sort + search ───────────────────────────────────
+  function applyLocalFilters() {
+    let result = allStocks;
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(s =>
+        s.ticker.toLowerCase().includes(q) ||
+        (s.name && s.name.toLowerCase().includes(q))
+      );
+    }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      let va = a[sort.col], vb = b[sort.col];
+      if (va == null) va = sort.dir === 'desc' ? -Infinity : Infinity;
+      if (vb == null) vb = sort.dir === 'desc' ? -Infinity : Infinity;
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va < vb) return sort.dir === 'asc' ? -1 : 1;
+      if (va > vb) return sort.dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    displayedStocks = result;
+    renderTable(result);
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────
+  const COLS = [
+    { key: 'ticker',     label: 'Ticker',     sortKey: 'ticker'    },
+    { key: 'name',       label: 'Name',       sortKey: 'name'      },
+    { key: 'country',    label: 'Country',    sortKey: 'country'   },
+    { key: 'industry',   label: 'Industry',   sortKey: 'industry'  },
+    { key: 'marketCap',  label: 'Market Cap', sortKey: 'marketCap' },
+    { key: 'price',      label: 'Price',      sortKey: 'price'     },
+    { key: 'change',     label: '% Change',   sortKey: 'change'    },
+  ];
+
+  function renderTable(stocks) {
+    if (stocks.length === 0) {
+      showEmpty();
+      return;
+    }
+
+    resultsCount.innerHTML = `<strong>${stocks.length.toLocaleString()}</strong> <span>stocks</span>`;
+
+    const table = document.createElement('table');
+
+    // thead
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    for (const col of COLS) {
+      const th = document.createElement('th');
+      th.dataset.key = col.sortKey;
+      const isSorted = sort.col === col.sortKey;
+      if (isSorted) th.classList.add('sorted');
+      th.innerHTML = col.label + `<span class="sort-arrow">${isSorted ? (sort.dir === 'asc' ? '↑' : '↓') : '↕'}</span>`;
+      th.addEventListener('click', () => onSort(col.sortKey));
+      headerRow.appendChild(th);
+    }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // tbody
+    const tbody = document.createElement('tbody');
+    const fragment = document.createDocumentFragment();
+
+    for (const s of stocks) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="td-ticker">${escHtml(s.ticker)}</td>
+        <td class="td-name" title="${escHtml(s.name || '')}">${escHtml(s.name || '—')}</td>
+        <td class="td-country">${escHtml(s.country || '—')}</td>
+        <td class="td-industry">${escHtml(s.industry || '—')}</td>
+        <td class="td-mcap">
+          <div>${escHtml(s.marketCapFormatted || '—')}</div>
+          <div style="margin-top:2px">${capBadge(s.marketCapBand)}</div>
+        </td>
+        <td class="td-price">${fmtPrice(s.price, s.currency)}</td>
+        <td class="td-change">${fmtChange(s.change)}</td>
+      `;
+      fragment.appendChild(tr);
+    }
+    tbody.appendChild(fragment);
+    table.appendChild(tbody);
+
+    tableWrap.innerHTML = '';
+    tableWrap.appendChild(table);
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── States ─────────────────────────────────────────────────────────
+  function showLoading() {
+    tableWrap.innerHTML = `
+      <div class="state-overlay" id="state-loading">
+        <div class="spinner"></div>
+        <h2>Loading stocks…</h2>
+        <p>Fetching live data from Yahoo Finance. This may take a moment on first load.</p>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+        </div>
+      </div>`;
+    resultsCount.innerHTML = 'Loading…';
+  }
+
+  function showError(msg) {
+    tableWrap.innerHTML = `
+      <div class="state-overlay">
+        <div class="icon">⚠️</div>
+        <h2>Something went wrong</h2>
+        <p>${escHtml(msg)}</p>
+        <button class="btn btn-primary" style="width:160px;margin-top:4px" onclick="location.reload()">Retry</button>
+      </div>`;
+    resultsCount.innerHTML = 'Error';
+  }
+
+  function showEmpty() {
+    tableWrap.innerHTML = `
+      <div class="state-overlay">
+        <div class="icon">🔍</div>
+        <h2>No stocks match your filters</h2>
+        <p>Try adjusting your Country, Industry, or Market Cap filters.</p>
+      </div>`;
+    resultsCount.innerHTML = '<strong>0</strong> <span>stocks</span>';
+  }
+
+  // ── Sort ───────────────────────────────────────────────────────────
+  function onSort(key) {
+    if (sort.col === key) {
+      sort.dir = sort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sort.col = key;
+      sort.dir = key === 'marketCap' || key === 'price' ? 'desc' : 'asc';
+    }
+    applyLocalFilters();
+  }
+
+  // ── Cap band selection ─────────────────────────────────────────────
+  capBands.forEach(label => {
+    label.addEventListener('click', () => {
+      capBands.forEach(l => l.classList.remove('selected'));
+      label.classList.add('selected');
+    });
+  });
+
+  // ── Country cascade ────────────────────────────────────────────────
+  filterCountry.addEventListener('change', () => {
+    const country = filterCountry.value;
+    if (country !== 'all' && countryIndustryMap[country]) {
+      populateIndustries(countryIndustryMap[country]);
+    } else {
+      const allIndustries = Object.values(countryIndustryMap)
+        .flat()
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .sort();
+      populateIndustries(allIndustries);
+    }
+  });
+
+  // ── Apply / Reset ──────────────────────────────────────────────────
+  btnApply.addEventListener('click', () => {
+    filters.country = filterCountry.value;
+    filters.industry = filterIndustry.value;
+    const checkedBand = document.querySelector('input[name="marketCap"]:checked');
+    filters.marketCapBand = checkedBand ? checkedBand.value : 'all';
+    fetchStocks();
+  });
+
+  btnReset.addEventListener('click', () => {
+    filters = { country: 'all', industry: 'all', marketCapBand: 'all' };
+    filterCountry.value = 'all';
+    filterIndustry.value = 'all';
+    document.querySelector('input[name="marketCap"][value="all"]').checked = true;
+    capBands.forEach(l => l.classList.remove('selected'));
+    document.querySelector('.cap-band-label[data-band="all"]').classList.add('selected');
+    searchInput.value = '';
+    searchQuery = '';
+    sort = { col: 'marketCap', dir: 'desc' };
+    fetchStocks();
+  });
+
+  // ── Refresh button ─────────────────────────────────────────────────
+  btnRefresh.addEventListener('click', () => {
+    btnRefresh.classList.add('spinning');
+    allStocks = [];
+    fetchStocks(true).finally(() => {
+      setTimeout(() => btnRefresh.classList.remove('spinning'), 500);
+    });
+  });
+
+  // ── Search ─────────────────────────────────────────────────────────
+  let searchTimer;
+  searchInput.addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchQuery = e.target.value.trim();
+      applyLocalFilters();
+    }, 200);
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────
+  fetchStocks();
+
+})();
+</script>
+</body>
+</html>
