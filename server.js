@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 // yahoo-finance2 exports the class; instantiate a singleton
-const yahooFinance = new YahooFinance();
+const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
