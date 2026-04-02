@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mounti — Stock Screener</title>
+  <title>Mounti — TSX & TSXV Screener</title>
   <style>
     /* ── Reset & Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -337,7 +337,7 @@
       color: var(--text);
     }
 
-    .td-country, .td-industry {
+    .td-exchange, .td-industry {
       color: var(--text-muted);
       white-space: nowrap;
     }
@@ -462,7 +462,7 @@
 
     @media (max-width: 600px) {
       .search-box { width: 140px; }
-      .td-country, .td-industry { display: none; }
+      .td-exchange, .td-industry { display: none; }
     }
   </style>
 </head>
@@ -475,7 +475,7 @@
       <div class="logo-icon">M</div>
       <div>
         <div class="logo-text">Mounti</div>
-        <div class="logo-tagline">Stock Screener</div>
+        <div class="logo-tagline">TSX &amp; TSXV Screener</div>
       </div>
     </a>
     <div class="header-meta">
@@ -497,9 +497,11 @@
     <aside id="sidebar">
 
       <div class="filter-section">
-        <h3>Country</h3>
-        <select class="filter-control" id="filter-country">
-          <option value="all">All Countries</option>
+        <h3>Exchange</h3>
+        <select class="filter-control" id="filter-exchange">
+          <option value="all">TSX + TSXV</option>
+          <option value="TSX">TSX</option>
+          <option value="TSXV">TSXV</option>
         </select>
       </div>
 
@@ -582,16 +584,16 @@
   // ── State ──────────────────────────────────────────────────────────
   let allStocks = [];
   let displayedStocks = [];
-  let filters = { country: 'all', industry: 'all', marketCapBand: 'all' };
+  let filters = { exchange: 'all', industry: 'all', marketCapBand: 'all' };
   let sort = { col: 'marketCap', dir: 'desc' };
   let searchQuery = '';
-  let countryIndustryMap = {};
+  let exchangeIndustryMap = {};
   let lastUpdated = null;
 
   // ── DOM refs ───────────────────────────────────────────────────────
   const tableWrap      = document.getElementById('table-wrap');
   const resultsCount   = document.getElementById('results-count');
-  const filterCountry  = document.getElementById('filter-country');
+  const filterExchange = document.getElementById('filter-exchange');
   const filterIndustry = document.getElementById('filter-industry');
   const capBands       = document.querySelectorAll('.cap-band-label');
   const btnApply       = document.getElementById('btn-apply');
@@ -654,8 +656,8 @@
       }
 
       const params = new URLSearchParams();
-      if (filters.country !== 'all')      params.set('country', filters.country);
-      if (filters.industry !== 'all')     params.set('industry', filters.industry);
+      if (filters.exchange !== 'all')      params.set('exchange', filters.exchange);
+      if (filters.industry !== 'all')      params.set('industry', filters.industry);
       if (filters.marketCapBand !== 'all') params.set('marketCapBand', filters.marketCapBand);
 
       const [stocksRes, filtersRes] = await Promise.all([
@@ -668,8 +670,7 @@
 
       if (filtersRes) {
         const filterData = await filtersRes.json();
-        countryIndustryMap = filterData.countryIndustryMap || {};
-        populateCountries(filterData.countries || []);
+        exchangeIndustryMap = filterData.exchangeIndustryMap || {};
         populateIndustries(filterData.industries || []);
       }
 
@@ -684,18 +685,7 @@
   }
 
   // ── Filter dropdowns ───────────────────────────────────────────────
-  function populateCountries(countries) {
-    filterCountry.innerHTML = '<option value="all">All Countries</option>';
-    for (const c of countries) {
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = c;
-      filterCountry.appendChild(opt);
-    }
-    filterCountry.value = filters.country;
-  }
-
-  function populateIndustries(industries, fromCountryMap = false) {
+  function populateIndustries(industries) {
     filterIndustry.innerHTML = '<option value="all">All Industries</option>';
     for (const i of industries) {
       const opt = document.createElement('option');
@@ -703,7 +693,7 @@
       opt.textContent = i;
       filterIndustry.appendChild(opt);
     }
-    filterIndustry.value = filters.industry in industries ? filters.industry : 'all';
+    filterIndustry.value = industries.includes(filters.industry) ? filters.industry : 'all';
   }
 
   // ── Local filter + sort + search ───────────────────────────────────
@@ -736,13 +726,13 @@
 
   // ── Render ─────────────────────────────────────────────────────────
   const COLS = [
-    { key: 'ticker',     label: 'Ticker',     sortKey: 'ticker'    },
-    { key: 'name',       label: 'Name',       sortKey: 'name'      },
-    { key: 'country',    label: 'Country',    sortKey: 'country'   },
-    { key: 'industry',   label: 'Industry',   sortKey: 'industry'  },
-    { key: 'marketCap',  label: 'Market Cap', sortKey: 'marketCap' },
-    { key: 'price',      label: 'Price',      sortKey: 'price'     },
-    { key: 'change',     label: '% Change',   sortKey: 'change'    },
+    { key: 'ticker',    label: 'Ticker',    sortKey: 'ticker'   },
+    { key: 'name',      label: 'Name',      sortKey: 'name'     },
+    { key: 'exchange',  label: 'Exchange',  sortKey: 'exchange' },
+    { key: 'industry',  label: 'Industry',  sortKey: 'industry' },
+    { key: 'marketCap', label: 'Market Cap', sortKey: 'marketCap' },
+    { key: 'price',     label: 'Price',     sortKey: 'price'    },
+    { key: 'change',    label: '% Change',  sortKey: 'change'   },
   ];
 
   function renderTable(stocks) {
@@ -779,7 +769,7 @@
       tr.innerHTML = `
         <td class="td-ticker">${escHtml(s.ticker)}</td>
         <td class="td-name" title="${escHtml(s.name || '')}">${escHtml(s.name || '—')}</td>
-        <td class="td-country">${escHtml(s.country || '—')}</td>
+        <td class="td-exchange">${escHtml(s.exchange || '—')}</td>
         <td class="td-industry">${escHtml(s.industry || '—')}</td>
         <td class="td-mcap">
           <div>${escHtml(s.marketCapFormatted || '—')}</div>
@@ -835,7 +825,7 @@
       <div class="state-overlay">
         <div class="icon">🔍</div>
         <h2>No stocks match your filters</h2>
-        <p>Try adjusting your Country, Industry, or Market Cap filters.</p>
+        <p>Try adjusting your Exchange, Industry, or Market Cap filters.</p>
       </div>`;
     resultsCount.innerHTML = '<strong>0</strong> <span>stocks</span>';
   }
@@ -859,23 +849,20 @@
     });
   });
 
-  // ── Country cascade ────────────────────────────────────────────────
-  filterCountry.addEventListener('change', () => {
-    const country = filterCountry.value;
-    if (country !== 'all' && countryIndustryMap[country]) {
-      populateIndustries(countryIndustryMap[country]);
+  // ── Exchange cascade → narrows Industry dropdown ───────────────────
+  filterExchange.addEventListener('change', () => {
+    const ex = filterExchange.value;
+    if (ex !== 'all' && exchangeIndustryMap[ex]) {
+      populateIndustries(exchangeIndustryMap[ex]);
     } else {
-      const allIndustries = Object.values(countryIndustryMap)
-        .flat()
-        .filter((v, i, a) => a.indexOf(v) === i)
-        .sort();
+      const allIndustries = [...new Set(Object.values(exchangeIndustryMap).flat())].sort();
       populateIndustries(allIndustries);
     }
   });
 
   // ── Apply / Reset ──────────────────────────────────────────────────
   btnApply.addEventListener('click', () => {
-    filters.country = filterCountry.value;
+    filters.exchange = filterExchange.value;
     filters.industry = filterIndustry.value;
     const checkedBand = document.querySelector('input[name="marketCap"]:checked');
     filters.marketCapBand = checkedBand ? checkedBand.value : 'all';
@@ -883,8 +870,8 @@
   });
 
   btnReset.addEventListener('click', () => {
-    filters = { country: 'all', industry: 'all', marketCapBand: 'all' };
-    filterCountry.value = 'all';
+    filters = { exchange: 'all', industry: 'all', marketCapBand: 'all' };
+    filterExchange.value = 'all';
     filterIndustry.value = 'all';
     document.querySelector('input[name="marketCap"][value="all"]').checked = true;
     capBands.forEach(l => l.classList.remove('selected'));
